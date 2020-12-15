@@ -1,11 +1,13 @@
 package com.apcsa.nathanvinny.project1;
 
+import com.sun.jdi.ThreadReference;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.*;
 import java.util.Vector;
-
+import java.time.Instant;
 // thanks stackoverflow i<3u
 
 
@@ -33,6 +35,10 @@ public class Server {
 
                 if (players.size() <2) {
                     System.out.println("Player connected" + s);
+                    if(players.size() == 1) {
+                        System.out.println("Sending Message to Player 1.");
+                        players.get(0).dout.writeUTF("Player 2 Connected");
+                    }
 
                     ClientConnection conn = new ClientConnection(s);
                     players.addElement(conn);
@@ -52,6 +58,7 @@ public class Server {
 
         } catch (IOException ex) {
             System.out.println("IOException in  acceptConnections()");
+            ex.printStackTrace();
         }
     }
 
@@ -81,17 +88,37 @@ public class Server {
                 dout.writeInt(this.uuid);
                 dout.flush();
 
-                while (true) {
-                    // Start Game Loop
+                while (!socket.isClosed()) {
+//                    System.out.println("Socket is not closed.");
+//                    System.out.println("Sending continue.");
+                    dout.writeInt(100); dout.flush();
 
-
-                    // End Game Loop
+                    if (din.readInt() == 100) {
+                        // Start Game Loop
+                        String input = din.readUTF();
+                        System.out.printf("Player %d: %s%n", this.uuid, input);
+                        // End Game Loop
+                    } else {
+                        players.remove(this.uuid); playerCnt--;
+                        if (players.size() == 1) {
+                            ClientConnection opp = players.get(0);
+                            System.out.println("Disconnecting " + opp);
+                            opp.dout.writeInt(205);
+                            opp.dout.flush();
+                        }
+                        System.out.println(players.toString());
+                        this.socket.close();
+                    }
                 }
 
 
+            } catch (SocketTimeoutException e) {
+                System.out.println(this.uuid + "'s Socket Timed Out");
+                e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
             }
+
         }
     }
 
