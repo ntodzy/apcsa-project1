@@ -35,27 +35,52 @@ public class Client {
                 dout = new DataOutputStream(socket.getOutputStream());
 
                 // server returns 503 if two clients are connected.
-                if (this.din.readInt() == 503) {
+                if (din.readInt() == 503) {
                     System.out.println("Server is busy right now. Please try again later.");
                     socket.close();
                     return; // just a way to force breaking. most likely redundant.
 
                 } else {
                     System.out.println("Connected!");
-                    id = this.din.readInt(); // should be the first thing the server sends!!
+                    id = din.readInt(); // should be the first thing the server sends!!
                     System.out.printf("Connected to server as user %d%n", id);
 
+//                    if (id == 0) {
+//                        System.out.println(din.readUTF());
+//                    }
+
                     while (!socket.isClosed()) {
-                        switch (din.readInt()) {
-                            case 200: System.out.println("Server Accepted Request; waiting for opp."); break; // all good from the server. @todo set boolean varible to execute.
-                            case 205: System.out.println("Opponent Disconnected, disconnecting."); break; // read.
-                            case 400: System.out.println("Malformed Request. Most likely had wrong data"); break; // @todo add check in client as well.
+                        int tmp = din.readInt();
+//                        System.out.println("Code: " + tmp);
+                        switch (tmp) {
+                            case 102 -> { System.out.println("Server Accepted Request. Waiting for opponent."); continue; }
+                            case 200 -> {
+                                System.out.println("Server Accepted Request with all Content"); continue; // all good from the server. @todo set boolean varible to execute.
+                            }
+                            case 205 ->  { System.out.println("Opponent Disconnected, disconnecting."); socket.close(); continue;} // read.
+                            case 400 ->  { }//System.out.println("Malformed Request. Most likely had wrong data");} // @todo add check in client as well.
+                            case 600 ->  {
+                                if (id == 1) {
+                                    System.out.println("You won");
+                                } else {
+                                    System.out.println("You lost");
+                                }
+                                socket.close(); System.exit(0);
+                                continue;
 
-                            default:;
+                            }
+                            case 601 ->  {
+                                if (id == 1) {
+                                    System.out.println("You lost");
+                                } else {
+                                    System.out.println("You Won");
+                                }
+                            }
+                            case 602 ->  { System.out.println("You Tied!"); socket.close(); System.exit(0); continue; }
+
+                            default -> {System.out.println();}
                         }
-
-                        // if you're here then congratulations. the server did not refuse the connections.
-                        System.out.println("(R)ock (P)aper (S)cissors or (quit)");
+                        // if you're here then congratulations. the server did not refuse the connection
                         String input = "";
                         if (cmdLn.hasNext()) {
                             switch (input = cmdLn.nextLine()) { // determine to continque the game loop, yes i know dumb switch.
@@ -65,6 +90,7 @@ public class Client {
                         } else {
                             System.out.println("NO INPUT"); // dotn know what else to put ehre.  i dont think the hasNext is very important.
                         }
+
 
                         // Start Game Loop
 //                        System.out.println(input.replace(" ", "&nbsp"));
@@ -107,6 +133,8 @@ public class Client {
 //        PORT = client.cmdLn.nextInt();
 
         client.connectToServer(ADDRESS, 57620);
+
+        System.exit(0);
 
 
     }

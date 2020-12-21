@@ -37,16 +37,13 @@ public class Server {
 
                 // Some messy logic to send connection information between users.
                 if (players.size() <2) {
-                    System.out.println("Player connected" + s);
-                    if(players.size() == 1) {
-                        System.out.println("Sending Message to Player 1.");
-                        players.get(0).dout.writeUTF("Player 2 Connected");
-                    }
+                    System.out.println("[Server] Player connected" + s);
 
                     // Create a new collection and add it to the vector so we can cleanly access it later..
                     ClientConnection conn = new ClientConnection(s);
                     players.addElement(conn);
 
+                    // Start threads
                     Thread t = new Thread(players.get(players.indexOf(conn)));
                     t.start();
                 } else {
@@ -71,15 +68,20 @@ public class Server {
         private DataInputStream din;
         private DataOutputStream dout;
         private final int uuid;
+        private ClientConnection opp;
 
         // Constructor
         public ClientConnection(Socket s) {
             this.socket = s;
             this.uuid = playerCnt++;
 
+            if (this.uuid == 1) {
+                this.opp = players.get(0); // get opponent
+            }
+
             try {
-                din = new DataInputStream(socket.getInputStream());
-                dout = new DataOutputStream(socket.getOutputStream());
+                this.din = new DataInputStream(socket.getInputStream());
+                this.dout = new DataOutputStream(socket.getOutputStream());
             } catch (IOException e) {
                 System.out.print("IOEXCEPTION in ClientConnection");
                 e.printStackTrace();
@@ -93,6 +95,14 @@ public class Server {
                 // Send 200 to client "handshake"
                 dout.writeInt(200);
                 dout.writeInt(this.uuid); // not really important at the moment.
+                // Update player 0 opponent now that we have one and tell them the game is starting!
+
+//                if(players.size() == 2) {
+//                    System.out.println("[Server] Sending Message to Player 1.");
+//                    players.get(0).opp = players.get(1);
+//                    players.get(0).dout.writeUTF("Player 2 Connected");
+//                }
+
                 dout.flush();
 
                 while (!socket.isClosed()) {
@@ -100,37 +110,58 @@ public class Server {
 //                    System.out.println("Sending continue.");
                     dout.writeInt(100); dout.flush(); // Server says hey, ill continue.
 
-                    if (din.readInt() == 100) { // if the client accepts to continue the process run game
+                    if (this.din.readInt() == 100) { // if the client accepts to continue the process run game
                         // Start Game Loop
                         String input = din.readUTF();
 
-                        switch (input.toLowerCase()) {
-                            case "rock", "r" -> inputs[this.uuid] = 0;
-                            case "scissors", "s" -> inputs[this.uuid] = 1;
-                            case "paper", "p" -> inputs[this.uuid] = 2;
-                            default -> {
-                                System.out.println("got bad response from client");
-                                dout.writeInt(400);
-                                dout.flush();
-                                continue;
+                        if ( inputs[this.uuid] == -1) {
+                            switch (input.toLowerCase()) {
+                                case "rock", "r" -> inputs[this.uuid] = 0;
+                                case "scissors", "s" -> inputs[this.uuid] = 1;
+                                case "paper", "p" -> inputs[this.uuid] = 2;
+                                case "" -> {continue;}
+                                default -> {
+                                    System.out.println("got bad response from client");
+                                    this.dout.writeInt(400);
+                                    this.dout.flush();
+                                    continue;
+                                }
                             }
                         }
 
-                        dout.writeInt(200); dout.flush();
+                        if ( inputs[0] == -1 || inputs[1] == -1 ) {
+                            System.out.printf("[Client %d] Missing Information", this.uuid);
+                            this.dout.writeInt(102); this.dout.flush();
+                        } else {
+                            System.out.printf("[Client %d] All Inputs Collected", this.uuid);
+                            this.dout.writeInt(200); this.dout.flush();
+                        }
+
+
+                        while (inputs[0] == -1 || inputs[1] == -1) {System.out.println("yo im in a while loop");} // block loop
+                        System.out.printf("[Client %d] Starting Logic", this.uuid);
+
+                        if (RockPaperScissors.solutions[inputs[0]][inputs[1]] ==0) { // player 0 wins
+                            this.dout.writeInt(601); this.dout.flush();
+
+                            disconnect(this);
+                        } else if (RockPaperScissors.solutions[inputs[0]][inputs[1]] == 1) { // player 1 wins
+                            this.dout.writeInt(600); this.dout.flush();
+                            disconnect(this); // player 1 wins
+
+                        } else {
+                            System.out.println("Tie");
+                            this.dout.writeInt(602); this.dout.flush();
+                            disconnect(this); // player 1 wins
+                            System.out.println("Tie2");
+                        }
+
 
                         System.out.println(Arrays.toString(inputs));
 //                        System.out.printf("Player %d: value %d%n", this.uuid, inputs[this.uuid]);
                         // End Game Loop
                     } else { // otherwise start the disconnection process.
-                        players.remove(this.uuid); playerCnt--;
-                        if (players.size() == 1) {
-                            ClientConnection opp = players.get(0);
-                            System.out.println("Disconnecting " + opp);
-                            opp.dout.writeInt(205);
-                            opp.dout.flush();
-                        }
-                        System.out.println(players.toString());
-                        this.socket.close();
+                        disconnect(this);
                     }
                 }
 
@@ -143,6 +174,14 @@ public class Server {
             }
 
         }
+    }
+
+    public void disconnect(ClientConnection client) throws IOException {
+        System.out.println("Disconnecting " + this);
+        client.socket.close();
+
+        players.remove(client); playerCnt--;
+        System.out.println(players.toString());
     }
 
     public static void main(String[] args) throws IOException {
