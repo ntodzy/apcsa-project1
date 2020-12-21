@@ -34,12 +34,11 @@ public class Client {
                 din = new DataInputStream(socket.getInputStream());
                 dout = new DataOutputStream(socket.getOutputStream());
 
-                // Setup some shiet
-
+                // server returns 503 if two clients are connected.
                 if (this.din.readInt() == 503) {
                     System.out.println("Server is busy right now. Please try again later.");
                     socket.close();
-                    return;
+                    return; // just a way to force breaking. most likely redundant.
 
                 } else {
                     System.out.println("Connected!");
@@ -47,24 +46,31 @@ public class Client {
                     System.out.printf("Connected to server as user %d%n", id);
 
                     while (!socket.isClosed()) {
-                        // Start Game Loop
                         switch (din.readInt()) {
-                            case 205: System.out.println("Opponent Disconnected, disconnecting."); break;
+                            case 200: System.out.println("Server Accepted Request; waiting for opp."); break; // all good from the server. @todo set boolean varible to execute.
+                            case 205: System.out.println("Opponent Disconnected, disconnecting."); break; // read.
+                            case 400: System.out.println("Malformed Request. Most likely had wrong data"); break; // @todo add check in client as well.
+
                             default:;
                         }
 
+                        // if you're here then congratulations. the server did not refuse the connections.
+                        System.out.println("(R)ock (P)aper (S)cissors or (quit)");
                         String input = "";
                         if (cmdLn.hasNext()) {
-                            switch (input = cmdLn.nextLine()) {
+                            switch (input = cmdLn.nextLine()) { // determine to continque the game loop, yes i know dumb switch.
                                 case "quit": dout.writeInt(99); dout.flush(); socket.close();
-                                default: dout.writeInt(100); dout.flush();
+                                default: dout.writeInt(100); dout.flush(); // server expects this to start its game loop.
                             }
                         } else {
-                            System.out.println("NO INPUT");
-                        } // do it or else ill fuck you up code.
-                        System.out.println(input.replace(" ", "&nbsp"));
+                            System.out.println("NO INPUT"); // dotn know what else to put ehre.  i dont think the hasNext is very important.
+                        }
+
+                        // Start Game Loop
+//                        System.out.println(input.replace(" ", "&nbsp"));
                         dout.writeUTF(input);
                         dout.flush();
+                        // End Game Loop
                     }
                 }
 
