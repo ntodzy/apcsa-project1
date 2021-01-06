@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.Random;
 import java.util.Scanner;
 
 // thanks stackoverflow i<3u
@@ -14,6 +15,12 @@ public class Client {
     private int oppId;
     private ServerConnection csc;
     public Scanner cmdLn;
+    public int currentScore = 0;
+    public int steps = 0;
+    public boolean gameRun = true;
+    public Random rand = new Random();
+    public String results;
+    public int diceroll;
 
     public void connectToServer(String HOST, int PORT) {
         csc = new ServerConnection(HOST, PORT);
@@ -80,23 +87,53 @@ public class Client {
 
                             default -> {System.out.println();}
                         }
-                        // if you're here then congratulations. the server did not refuse the connection
-                        String input = "";
-                        if (cmdLn.hasNext()) {
-                            switch (input = cmdLn.nextLine()) { // determine to continque the game loop, yes i know dumb switch.
-                                case "quit": dout.writeInt(99); dout.flush(); socket.close();
-                                default: dout.writeInt(100); dout.flush(); // server expects this to start its game loop.
+
+
+                        while(gameRun) {
+                            System.out.printf("Your current score is %d\n",currentScore);
+                            diceroll = rand.nextInt(5) + 1;
+
+                            // if you're here then congratulations. the server did not refuse the connection
+                            String input = "";
+                            if (cmdLn.hasNext()) {
+                                switch (input = cmdLn.nextLine()) { // determine to continque the game loop, yes i know dumb switch.
+                                    case "quit":
+                                        dout.writeInt(99);
+                                        dout.flush();
+                                        socket.close();
+                                    case "roll":
+                                        break;
+                                    default:
+                                        dout.writeInt(100);
+                                        dout.flush(); // server expects this to start its game loop.
+                                }
+                            } else {
+                                System.out.println("NO INPUT"); // dont know what else to put Here.  i dont think the hasNext is very important.
                             }
-                        } else {
-                            System.out.println("NO INPUT"); // dotn know what else to put ehre.  i dont think the hasNext is very important.
+
+
+                            // Start Game Loop
+                            if(currentScore == 100){//Checks if the score is 100
+                                results = Integer.toString(steps);//Converted it to string to not mess with the socket codes
+                                System.out.println("It Took " + results + " Rolls");
+                                dout.writeUTF(results);
+                                dout.flush();//Sends data in socket to the other end
+                                gameRun = false;
+                            }
+
+                            if((currentScore + diceroll) <= 100){ //if the dice roll makes you bust
+                                currentScore += diceroll;
+                                steps++;
+                            }
+                            else{//if it does bust
+                                steps++;
+                            }
+
                         }
 
 
-                        // Start Game Loop
-//                        System.out.println(input.replace(" ", "&nbsp"));
-                        dout.writeUTF(input);
-                        dout.flush();
                         // End Game Loop
+
                     }
                 }
 
@@ -121,7 +158,7 @@ public class Client {
     }
 
     public static void main(String[] args) {
-        Client client = new com.apcsa.nathanvinny.project1.Client();
+        Client client = new Client();
 
         final String ADDRESS;
         final int PORT;

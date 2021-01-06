@@ -15,7 +15,7 @@ import java.time.Instant;
 public class Server {
     final private int PORT = 57620;
     private ServerSocket ss;
-    private Vector<ClientConnection> players = new Vector<ClientConnection>();
+    public Vector<ClientConnection> players = new Vector<ClientConnection>();
     int[] inputs = {-1,-1}; // too be used later.
 
     private int playerCnt = 0;
@@ -114,20 +114,11 @@ public class Server {
                         // Start Game Loop
                         String input = din.readUTF();
 
-                        if ( inputs[this.uuid] == -1) {
-                            switch (input.toLowerCase()) {
-                                case "rock", "r" -> inputs[this.uuid] = 0;
-                                case "scissors", "s" -> inputs[this.uuid] = 1;
-                                case "paper", "p" -> inputs[this.uuid] = 2;
-                                case "" -> {continue;}
-                                default -> {
-                                    System.out.println("got bad response from client");
-                                    this.dout.writeInt(400);
-                                    this.dout.flush();
-                                    continue;
-                                }
-                            }
+                        if ( inputs[this.uuid] == -1 && input.equals("")) {
+                            continue;
                         }
+
+                        inputs[this.uuid] = Integer.parseInt(input);
 
                         if ( inputs[0] == -1 || inputs[1] == -1 ) {
                             System.out.printf("[Client %d] Missing Information", this.uuid);
@@ -141,18 +132,18 @@ public class Server {
                         while (inputs[0] == -1 || inputs[1] == -1) {System.out.println("yo im in a while loop");} // block loop
                         System.out.printf("[Client %d] Starting Logic", this.uuid);
 
-                        if (RockPaperScissors.solutions[inputs[0]][inputs[1]] ==0) { // player 0 wins
+                        if (inputs[0] < inputs[1]) { // player 0 wins
                             this.dout.writeInt(601); this.dout.flush();
-
                             disconnect(this);
-                        } else if (RockPaperScissors.solutions[inputs[0]][inputs[1]] == 1) { // player 1 wins
-                            this.dout.writeInt(600); this.dout.flush();
-                            disconnect(this); // player 1 wins
 
-                        } else {
+                        } else if (inputs[0] > inputs[1]) { // player 1 wins
+                            this.dout.writeInt(600); this.dout.flush();
+                            disconnect(this);
+
+                        } else {// Tied
                             System.out.println("Tie");
                             this.dout.writeInt(602); this.dout.flush();
-                            disconnect(this); // player 1 wins
+                            disconnect(this);
                             System.out.println("Tie2");
                         }
 
