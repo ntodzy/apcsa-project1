@@ -34,7 +34,6 @@ public class Client {
                 din = new DataInputStream(socket.getInputStream());
                 dout = new DataOutputStream(socket.getOutputStream());
 
-                // Setup some shiet
 
                 if (this.din.readInt() == 503) {
                     System.out.println("Server is busy right now. Please try again later.");
@@ -61,7 +60,7 @@ public class Client {
                             }
                         } else {
                             System.out.println("NO INPUT");
-                        } // do it or else ill fuck you up code.
+                        }
                         System.out.println(input.replace(" ", "&nbsp"));
                         dout.writeUTF(input);
                         dout.flush();
